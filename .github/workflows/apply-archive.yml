@@ -12,9 +12,9 @@
 # Run:
 #   gh workflow run apply-archive.yml -R <this-repo> \
 #     -f archive_tag=drop-1 -f repo=owner/name -f branch=main -f message="Update"
-​
+
 name: Apply archive to repo
-​
+
 on:
   workflow_dispatch:
     inputs:
@@ -39,13 +39,13 @@ on:
         description: Repo whose releases hold the archives
         required: true
         default: soumyamahunt/archives
-​
+
 permissions: {}
-​
+
 concurrency:
   group: apply-${{ inputs.repo }}-${{ inputs.branch }}
   cancel-in-progress: false
-​
+
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/src"
           gh release download "$TAG" -R "$ARCHIVE_REPO" -p '*.zip' -O "$RUNNER_TEMP/archive.zip"
           unzip -q "$RUNNER_TEMP/archive.zip" -d "$RUNNER_TEMP/src"
-​
+
           # If the zip wraps everything in one top-level folder, use its contents
           cd "$RUNNER_TEMP/src"
           entry="$(ls -A)"
@@ -68,14 +68,14 @@ jobs:
           else
             echo "SRC=$RUNNER_TEMP/src" >> "$GITHUB_ENV"
           fi
-​
+
       - uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo }}
           ref: ${{ inputs.branch }}
           token: ${{ secrets.PUSH_TOKEN }}
           path: target
-​
+
       - name: Copy, commit and push
         working-directory: target
         env:
@@ -87,22 +87,22 @@ jobs:
           flags=(-a --exclude=.git)
           [ "$REPLACE" = "true" ] && flags+=(--delete)
           rsync "${flags[@]}" "$SRC/" ./
-​
+
           git add -A
           if git diff --cached --quiet; then
             echo "::notice::No changes to commit"
             exit 0
           fi
-​
+
           # Attribute the commit to the token's owner via their noreply address
           read -r id login < <(gh api user --jq '"\(.id) \(.login)"')
           git config user.name "$login"
           git config user.email "$id+$login@users.noreply.github.com"
-​
+
           git commit -m "$MSG"
           git push origin "HEAD:$BRANCH"
           echo "::notice::Pushed $(git rev-parse --short HEAD) to $REPO@$BRANCH"
-​
+
       # Runs only when everything above succeeded, so a failed run keeps the
       # archive for a retry
       - name: Delete archive release
